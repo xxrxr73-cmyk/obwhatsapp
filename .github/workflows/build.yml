@@ -24,18 +24,9 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Setup Clean Flutter Project
+      - name: Configure Flutter App Structure
         run: |
-          # 1. إنشاء مشروع Flutter جديد ونظيف تماماً
-          rm -rf *
-          rm -rf .git*
-          
-      - name: Re-checkout repository for code
-        uses: actions/checkout@v4
-
-      - name: Configure Flutter App
-        run: |
-          # 2. إعداد pubspec.yaml
+          # 1. إعداد ملف pubspec.yaml
           cat << 'EOF' > pubspec.yaml
           name: obwhatsapp_viewer
           description: "OBWhatsApp Database Viewer"
@@ -60,7 +51,7 @@ jobs:
             uses-material-design: true
           EOF
 
-          # 3. كتابة كود التطبيق الأساسي في lib/main.dart
+          # 2. إنشاء كود التطبيق في lib/main.dart
           mkdir -p lib
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
@@ -236,7 +227,7 @@ jobs:
           }
           EOF
 
-          # 4. حفظ الكود المكتوب ثم إنشاء مشروع أندرويد عبر Flutter تلقائياً
+          # 3. حفظ الكود وتوليد مشروع أندرويد
           mkdir -p /tmp/app_backup
           cp -r lib /tmp/app_backup/
           cp pubspec.yaml /tmp/app_backup/
@@ -245,6 +236,10 @@ jobs:
 
           cp -r /tmp/app_backup/lib .
           cp /tmp/app_backup/pubspec.yaml .
+
+          # 4. تحديث compileSdk و targetSdk إلى 34 لحل التعارض جذرياً
+          sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle || true
+          sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle || true
 
       - name: Fetch Dependencies
         run: |
