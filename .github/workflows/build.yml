@@ -24,12 +24,21 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Setup Project and Android Files
+      - name: Setup Clean Flutter Project
         run: |
-          # 1. إعداد pubspec.yaml لدعم التشفير والواجهات وذخيرة SQLite
+          # 1. إنشاء مشروع Flutter جديد ونظيف تماماً
+          rm -rf *
+          rm -rf .git*
+          
+      - name: Re-checkout repository for code
+        uses: actions/checkout@v4
+
+      - name: Configure Flutter App
+        run: |
+          # 2. إعداد pubspec.yaml
           cat << 'EOF' > pubspec.yaml
           name: obwhatsapp_viewer
-          description: "OBWhatsApp Database Viewer & Decrypter"
+          description: "OBWhatsApp Database Viewer"
           publish_to: 'none'
           version: 1.0.0+1
 
@@ -42,23 +51,18 @@ jobs:
             file_picker: ^8.0.0
             sqflite: ^2.3.0
             path: ^1.8.3
-            encrypt: ^5.0.3
-            pointycastle: ^3.7.3
 
           dev_dependencies:
             flutter_test:
               sdk: flutter
-            flutter_lints: ^3.0.0
 
           flutter:
             uses-material-design: true
           EOF
 
-          # 2. كتابة كود الشاشة الرئيسية ومعالجة التشفير وعرض المحادثات
+          # 3. كتابة كود التطبيق الأساسي في lib/main.dart
           mkdir -p lib
           cat << 'EOF' > lib/main.dart
-          import 'dart:io';
-          import 'dart:typed_data';
           import 'package:flutter/material.dart';
           import 'package:file_picker/file_picker.dart';
           import 'package:sqflite/sqflite.dart';
@@ -94,27 +98,16 @@ jobs:
 
           class _HomeScreenState extends State<HomeScreen> {
             String? _dbPath;
-            String? _keyPath;
             bool _isLoading = false;
             List<Map<String, dynamic>> _chats = [];
-            String _statusMessage = 'الرجاء اختيار ملف قاعدة البيانات ومفتاح التشفير (إن وجد).';
+            String _statusMessage = 'الرجاء اختيار ملف قاعدة البيانات (msgstore.db)';
 
             Future<void> _pickDbFile() async {
               FilePickerResult? result = await FilePicker.platform.pickFiles();
               if (result != null && result.files.single.path != null) {
                 setState(() {
                   _dbPath = result.files.single.path;
-                  _statusMessage = 'تم اختيار ملف قاعدة البيانات: ${p.basename(_dbPath!)}';
-                });
-              }
-            }
-
-            Future<void> _pickKeyFile() async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles();
-              if (result != null && result.files.single.path != null) {
-                setState(() {
-                  _keyPath = result.files.single.path;
-                  _statusMessage = 'تم اختيار ملف المفتاح: ${p.basename(_keyPath!)}';
+                  _statusMessage = 'تم اختيار الملف: ${p.basename(_dbPath!)}';
                 });
               }
             }
@@ -129,29 +122,20 @@ jobs:
 
               setState(() {
                 _isLoading = true;
-                _statusMessage = 'جاري معالجة وقراءة قاعدة البيانات...';
+                _statusMessage = 'جاري قراءة قاعدة البيانات...';
               });
 
               try {
-                String finalDbPath = _dbPath!;
-
-                // إذا كان الملف مشفراً بـ crypt14 أو crypt12
                 if (_dbPath!.contains('.crypt')) {
-                  if (_keyPath == null) {
-                    setState(() {
-                      _isLoading = false;
-                      _statusMessage = 'الملف مشفر! يرجى اختيار ملف المفتاح (Key file) لفك التشفير.';
-                    });
-                    return;
-                  }
-                  // هنا يتم استدعاء خوارزمية التفكيك بواسطة المفتاح
-                  finalDbPath = await _decryptDatabase(_dbPath!, _keyPath!);
+                  setState(() {
+                    _isLoading = false;
+                    _statusMessage = 'الملف مشفر بصيغة crypt. يرجى اختيار ملف msgstore.db غير مشفر لقراءته مباشرة.';
+                  });
+                  return;
                 }
 
-                // فتح قاعدة بيانات SQLite وقراءة الجداول
-                Database db = await openReadOnlyDatabase(finalDbPath);
+                Database db = await openReadOnlyDatabase(_dbPath!);
                 
-                // الاستعلام عن المحادثات والرسائل المخزنة
                 List<Map<String, dynamic>> result = await db.rawQuery('''
                   SELECT jid.raw_string AS chat_jid, message.text_data AS text, message.timestamp AS time
                   FROM message
@@ -176,32 +160,6 @@ jobs:
               }
             }
 
-            Future<String> _decryptDatabase(String dbPath, String keyPath) async {
-              // مسار حفظ القاعدة المفكوكة
-              Directory tempDir = Directory.systemTemp;
-              String outputPath = p.join(tempDir.path, 'decrypted_msgstore.db');
-              File dbFile = File(dbPath);
-              File keyFile = File(keyPath);
-
-              Uint8List dbBytes = await dbFile.readAsBytes();
-              Uint8List keyBytes = await keyFile.readAsBytes();
-
-              // معالجة رأس الملف والمفتاح لفك تشفير AES-GCM (للنسخ crypt14)
-              if (dbBytes.length > 190 && keyBytes.length >= 158) {
-                // استخراج iv و ciphertext
-                Uint8List iv = dbBytes.sublist(51, 67);
-                Uint8List encryptedData = dbBytes.sublist(191);
-                Uint8List aesKey = keyBytes.sublist(126, 158);
-
-                // حفظ الجزء المعالج كقاعدة بيانات غير مشفرة
-                File decryptedFile = File(outputPath);
-                await decryptedFile.writeAsBytes(encryptedData);
-                return outputPath;
-              } else {
-                throw Exception('ملف المفتاح أو قاعدة البيانات غير صالحين أو صيغة غير مدعومة.');
-              }
-            }
-
             @override
             Widget build(BuildContext context) {
               return Scaffold(
@@ -219,26 +177,13 @@ jobs:
                           elevation: 2,
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.storage, color: Colors.teal),
-                                  title: Text(_dbPath != null ? p.basename(_dbPath!) : 'لم يتم اختيار قاعدة البيانات'),
-                                  trailing: ElevatedButton(
-                                    onPressed: _pickDbFile,
-                                    child: const Text('اختيار DB'),
-                                  ),
-                                ),
-                                const Divider(),
-                                ListTile(
-                                  leading: const Icon(Icons.vpn_key, color: Colors.amber),
-                                  title: Text(_keyPath != null ? p.basename(_keyPath!) : 'اختياري: ملف المفتاح (Key)'),
-                                  trailing: ElevatedButton(
-                                    onPressed: _pickKeyFile,
-                                    child: const Text('اختيار Key'),
-                                  ),
-                                ),
-                              ],
+                            child: ListTile(
+                              leading: const Icon(Icons.storage, color: Colors.teal),
+                              title: Text(_dbPath != null ? p.basename(_dbPath!) : 'لم يتم اختيار قاعدة البيانات'),
+                              trailing: ElevatedButton(
+                                onPressed: _pickDbFile,
+                                child: const Text('اختيار DB'),
+                              ),
                             ),
                           ),
                         ),
@@ -291,7 +236,7 @@ jobs:
           }
           EOF
 
-          # 3. إنشاء الهيكل الافتراضي للأندرويد
+          # 4. حفظ الكود المكتوب ثم إنشاء مشروع أندرويد عبر Flutter تلقائياً
           mkdir -p /tmp/app_backup
           cp -r lib /tmp/app_backup/
           cp pubspec.yaml /tmp/app_backup/
@@ -301,128 +246,16 @@ jobs:
           cp -r /tmp/app_backup/lib .
           cp /tmp/app_backup/pubspec.yaml .
 
-          # 4. إعداد MainActivity.kt
-          mkdir -p android/app/src/main/kotlin/com/obwhatsapp/viewer
-          cat << 'EOF' > android/app/src/main/kotlin/com/obwhatsapp/viewer/MainActivity.kt
-          package com.obwhatsapp.viewer
-
-          import io.flutter.embedding.android.FlutterActivity
-
-          class MainActivity: FlutterActivity() {
-          }
-          EOF
-
-          # 5. إعداد AndroidManifest.xml
-          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/android">
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-              <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-              <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-              
-              <application
-                  android:label="OBWhatsApp Viewer"
-                  android:name="${applicationName}"
-                  android:icon="@mipmap/ic_launcher"
-                  android:requestLegacyExternalStorage="true">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:launchMode="singleTop"
-                      android:taskAffinity=""
-                      android:theme="@style/LaunchTheme"
-                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-                      android:hardwareAccelerated="true"
-                      android:windowSoftInputMode="adjustResize">
-                      <meta-data
-                        android:name="io.flutter.embedding.android.NormalTheme"
-                        android:resource="@style/NormalTheme"
-                        />
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <meta-data
-                      android:name="flutterEmbedding"
-                      android:value="2" />
-              </application>
-          </manifest>
-          EOF
-
-          # 6. إعداد build.gradle
-          cat << 'EOF' > android/app/build.gradle
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-
-          android {
-              namespace "com.obwhatsapp.viewer"
-              compileSdk 36
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-
-              defaultConfig {
-                  applicationId "com.obwhatsapp.viewer"
-                  minSdk 23
-                  targetSdk 36
-                  versionCode 1
-                  versionName "1.0.0"
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-          }
-
-          flutter {
-              source '../..'
-          }
-          EOF
-
-          # 7. توحيد compileSdk و minSdk
-          cat << 'EOF' >> android/build.gradle
-
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 36
-                          defaultConfig {
-                              minSdkVersion 23
-                          }
-                      }
-                  }
-              }
-          }
-          EOF
-
       - name: Fetch Dependencies
         run: |
           flutter clean
           flutter pub get
 
-      - name: Build Release APK direct
-        run: |
-          cd android
-          ./gradlew assembleRelease -PsuppressMinSdkVersionError=23
+      - name: Build Release APK
+        run: flutter build apk --release
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: android/app/build/outputs/apk/release/
+          path: build/app/outputs/flutter-apk/app-release.apk
