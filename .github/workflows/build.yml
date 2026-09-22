@@ -24,9 +24,9 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Configure Flutter App Structure
+      - name: Build and Configure Project Structure
         run: |
-          # 1. إعداد ملف pubspec.yaml
+          # 1. إنشاء ملف pubspec.yaml
           cat << 'EOF' > pubspec.yaml
           name: obwhatsapp_viewer
           description: "OBWhatsApp Database Viewer"
@@ -51,7 +51,7 @@ jobs:
             uses-material-design: true
           EOF
 
-          # 2. إنشاء كود التطبيق في lib/main.dart
+          # 2. إنشاء كود التطبيق الرئيسية
           mkdir -p lib
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
@@ -227,7 +227,7 @@ jobs:
           }
           EOF
 
-          # 3. حفظ الكود وتوليد مشروع أندرويد
+          # 3. حفظ النسخة واحتياطيات الملفات
           mkdir -p /tmp/app_backup
           cp -r lib /tmp/app_backup/
           cp pubspec.yaml /tmp/app_backup/
@@ -237,9 +237,46 @@ jobs:
           cp -r /tmp/app_backup/lib .
           cp /tmp/app_backup/pubspec.yaml .
 
-          # 4. تحديث compileSdk و targetSdk إلى 34 لحل التعارض جذرياً
-          sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle || true
-          sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle || true
+          # 4. إصلاح إعدادات Android وإجبار compileSdkVersion على 34 لتلافي خطأ file_picker
+          cat << 'EOF' > android/app/build.gradle
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          android {
+              namespace "com.obwhatsapp.viewer"
+              compileSdk 34
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = "1.8"
+              }
+
+              defaultConfig {
+                  applicationId "com.obwhatsapp.viewer"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0.0"
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+          EOF
 
       - name: Fetch Dependencies
         run: |
