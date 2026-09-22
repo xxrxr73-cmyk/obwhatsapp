@@ -51,7 +51,7 @@ jobs:
             uses-material-design: true
           EOF
 
-          # 2. إنشاء كود التطبيق الرئيسية
+          # 2. إنشاء كود التطبيق الأساسي
           mkdir -p lib
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
@@ -227,7 +227,7 @@ jobs:
           }
           EOF
 
-          # 3. حفظ النسخة واحتياطيات الملفات
+          # 3. إنشاء هيكل مشروع أندرويد عبر Flutter
           mkdir -p /tmp/app_backup
           cp -r lib /tmp/app_backup/
           cp pubspec.yaml /tmp/app_backup/
@@ -237,7 +237,7 @@ jobs:
           cp -r /tmp/app_backup/lib .
           cp /tmp/app_backup/pubspec.yaml .
 
-          # 4. إصلاح إعدادات Android وإجبار compileSdkVersion على 34 لتلافي خطأ file_picker
+          # 4. ضبط compileSdk و targetSdk بملف التطبيق الرئيسي
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -275,6 +275,24 @@ jobs:
 
           flutter {
               source '../..'
+          }
+          EOF
+
+          # 5. [خطوة الفصل الحاسمة] إجبار جميع التبعيات والمكتبات الخارجية على استخدام compileSdk 34 و minSdk 21
+          cat << 'EOF' >> android/build.gradle
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 34
+                          defaultConfig {
+                              minSdkVersion 21
+                              targetSdkVersion 34
+                          }
+                      }
+                  }
+              }
           }
           EOF
 
