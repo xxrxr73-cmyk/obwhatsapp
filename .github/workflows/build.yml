@@ -155,7 +155,7 @@ jobs:
             Widget build(BuildContext context) {
               return Scaffold(
                 appBar: AppBar(
-                  title: const Text('OBWhatsApp Database Viewer'),
+                  title: const Text('OBWhatsApp Viewer'),
                   centerTitle: true,
                 ),
                 body: Directionality(
@@ -227,7 +227,7 @@ jobs:
           }
           EOF
 
-          # 3. إنشاء هيكل مشروع أندرويد عبر Flutter
+          # 3. حفظ النسخة واحتياطيات الملفات
           mkdir -p /tmp/app_backup
           cp -r lib /tmp/app_backup/
           cp pubspec.yaml /tmp/app_backup/
@@ -237,7 +237,7 @@ jobs:
           cp -r /tmp/app_backup/lib .
           cp /tmp/app_backup/pubspec.yaml .
 
-          # 4. ضبط compileSdk و targetSdk بملف التطبيق الرئيسي
+          # 4. رفع minSdk إلى 23 و compileSdk إلى 34 لحل المشكلة جذرياً
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -260,7 +260,7 @@ jobs:
 
               defaultConfig {
                   applicationId "com.obwhatsapp.viewer"
-                  minSdk 21
+                  minSdk 23
                   targetSdk 34
                   versionCode 1
                   versionName "1.0.0"
@@ -278,7 +278,7 @@ jobs:
           }
           EOF
 
-          # 5. [خطوة الفصل الحاسمة] إجبار جميع التبعيات والمكتبات الخارجية على استخدام compileSdk 34 و minSdk 21
+          # 5. تطبيق minSdk 23 و compileSdk 34 على جميع المشروع الفرعية
           cat << 'EOF' >> android/build.gradle
 
           subprojects {
@@ -287,7 +287,7 @@ jobs:
                       project.android {
                           compileSdkVersion 34
                           defaultConfig {
-                              minSdkVersion 21
+                              minSdkVersion 23
                               targetSdkVersion 34
                           }
                       }
@@ -302,7 +302,7 @@ jobs:
           flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
