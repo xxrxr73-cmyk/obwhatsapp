@@ -24,19 +24,21 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Setup Full Android Project Structure Safely
+      - name: Rebuild Project Safely
         run: |
-          # 1. حفظ نسخة احتياطية من الكود المخصص
-          mkdir -p /tmp/backup
-          cp lib/main.dart /tmp/backup/main.dart || true
+          # 1. حفظ ملف main.dart و pubspec.yaml مؤقتاً
+          mkdir -p /tmp/backup_code
+          cp -r lib /tmp/backup_code/
+          cp pubspec.yaml /tmp/backup_code/
 
-          # 2. إنشاء الهيكلية الأساسية للأندرويد
+          # 2. إعادة إنشاء هيكلية الأندرويد كاملة
           flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
 
-          # 3. استعادة الكود المخصص لـ main.dart
-          cp /tmp/backup/main.dart lib/main.dart || true
+          # 3. استعادة ملفات مشروعك
+          cp -r /tmp/backup_code/lib .
+          cp /tmp/backup_code/pubspec.yaml .
 
-          # 4. قواعد ProGuard لتثبيت مكتبة file_picker
+          # 4. إضافة قواعد ProGuard
           mkdir -p android/app
           cat << 'EOF' > android/app/proguard-rules.pro
           -keep class io.flutter.app.** { *; }
@@ -47,7 +49,7 @@ jobs:
           -dontwarn com.mr.flutter.plugin.filepicker.** { *; }
           EOF
 
-          # 5. إعداد AndroidManifest بالأذونات المطلوبة
+          # 5. إعداد AndroidManifest
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
