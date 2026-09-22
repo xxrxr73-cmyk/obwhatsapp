@@ -24,11 +24,59 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Setup Android Project & Set SDK 36
+        run: |
+          # 1. إنشاء مجلدات وملفات أندرويد إذا لم تكن موجودة
+          flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
+
+          # 2. استبدال ملف android/app/build.gradle بملف متوافق مع Java 17 و compileSdk 36
+          cat << 'EOF' > android/app/build.gradle
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          android {
+              namespace "com.obwhatsapp.viewer"
+              compileSdk 36
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+
+              defaultConfig {
+                  applicationId "com.obwhatsapp.viewer"
+                  minSdk 21
+                  targetSdk 36
+                  versionCode 1
+                  versionName "1.0.0"
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+          EOF
+
       - name: Get dependencies
         run: flutter pub get
 
       - name: Build APK Release
-        run: flutter build apk --release --no-tree-shake-icons --extra-front-end-options=--no-implicit-casts
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
