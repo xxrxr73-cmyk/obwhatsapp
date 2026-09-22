@@ -24,32 +24,11 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android Skeleton safely
-        run: |
-          mkdir -p /tmp/project_backup
-          cp lib/main.dart /tmp/project_backup/main.dart || true
-          cp pubspec.yaml /tmp/project_backup/pubspec.yaml || true
-          flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
-          cp /tmp/project_backup/main.dart lib/main.dart || true
-          cp /tmp/project_backup/pubspec.yaml pubspec.yaml || true
-
-      - name: Force compileSdk 36 and Java 17 compatibility
-        run: |
-          # تعديل compileSdk و targetSdk ليكون 36 في build.gradle
-          sed -i 's/compileSdk .*/compileSdk 36/' android/app/build.gradle || true
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
-          sed -i 's/targetSdk .*/targetSdk 36/' android/app/build.gradle || true
-          sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
-          
-          # ضبط توافقية Java 17 لملفات Java و Kotlin
-          sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' android/app/build.gradle || true
-          sed -i 's/JavaVersion.VERSION_11/JavaVersion.VERSION_17/g' android/app/build.gradle || true
-
       - name: Get dependencies
         run: flutter pub get
 
       - name: Build APK Release
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --extra-front-end-options=--no-implicit-casts
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
