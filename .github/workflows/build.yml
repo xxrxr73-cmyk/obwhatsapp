@@ -33,10 +33,40 @@ jobs:
           cp /tmp/project_backup/main.dart lib/main.dart || true
           cp /tmp/project_backup/pubspec.yaml pubspec.yaml || true
 
-      - name: Upgrade compileSdk to 36
+      - name: Configure Android build settings
         run: |
-          sed -i 's/compileSdk = .*/compileSdk = 36/' android/app/build.gradle || true
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
+          cat << 'EOF' > android/app/build.gradle
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          android {
+              namespace "com.obwhatsapp.viewer"
+              compileSdk 36
+
+              defaultConfig {
+                  applicationId "com.obwhatsapp.viewer"
+                  minSdk 21
+                  targetSdk 36
+                  versionCode 1
+                  versionName "1.0.0"
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+          EOF
 
       - name: Get dependencies
         run: flutter pub get
