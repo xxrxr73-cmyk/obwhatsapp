@@ -24,8 +24,11 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android Skeleton
-        run: flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
+      - name: Generate Android Skeleton safely
+        run: |
+          cp lib/main.dart lib/main.dart.bak || true
+          flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
+          cp lib/main.dart.bak lib/main.dart || true
 
       - name: Upgrade compileSdk to 36
         run: |
