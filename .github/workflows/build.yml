@@ -24,32 +24,32 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Rebuild Project Safely
+      - name: Setup Project and Android Files
         run: |
-          # 1. حفظ ملف main.dart و pubspec.yaml مؤقتاً
-          mkdir -p /tmp/backup_code
-          cp -r lib /tmp/backup_code/
-          cp pubspec.yaml /tmp/backup_code/
+          # 1. حفظ ملفات المشروع الأساسية
+          mkdir -p /tmp/app_backup
+          cp -r lib /tmp/app_backup/
+          cp pubspec.yaml /tmp/app_backup/
 
-          # 2. إعادة إنشاء هيكلية الأندرويد كاملة
+          # 2. إنشاء الهيكل الافتراضي المستقر للأندرويد
           flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
 
-          # 3. استعادة ملفات مشروعك
-          cp -r /tmp/backup_code/lib .
-          cp /tmp/backup_code/pubspec.yaml .
+          # 3. استعادة الكود والاعتمادات
+          cp -r /tmp/app_backup/lib .
+          cp /tmp/app_backup/pubspec.yaml .
 
-          # 4. إضافة قواعد ProGuard
-          mkdir -p android/app
-          cat << 'EOF' > android/app/proguard-rules.pro
-          -keep class io.flutter.app.** { *; }
-          -keep class io.flutter.plugin.** { *; }
-          -keep class io.flutter.util.** { *; }
-          -keep class io.flutter.plugins.** { *; }
-          -keep class com.mr.flutter.plugin.filepicker.** { *; }
-          -dontwarn com.mr.flutter.plugin.filepicker.** { *; }
+          # 4. إعداد MainActivity.kt
+          mkdir -p android/app/src/main/kotlin/com/obwhatsapp/viewer
+          cat << 'EOF' > android/app/src/main/kotlin/com/obwhatsapp/viewer/MainActivity.kt
+          package com.obwhatsapp.viewer
+
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity: FlutterActivity() {
+          }
           EOF
 
-          # 5. إعداد AndroidManifest
+          # 5. تعديل AndroidManifest لتأمين الأذونات
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
@@ -59,7 +59,7 @@ jobs:
               <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
               
               <application
-                  android:label="obwhatsapp_viewer"
+                  android:label="OBWhatsApp Viewer"
                   android:name="${applicationName}"
                   android:icon="@mipmap/ic_launcher"
                   android:requestLegacyExternalStorage="true">
@@ -88,18 +88,7 @@ jobs:
           </manifest>
           EOF
 
-          # 6. إضافة MainActivity.kt
-          mkdir -p android/app/src/main/kotlin/com/obwhatsapp/viewer
-          cat << 'EOF' > android/app/src/main/kotlin/com/obwhatsapp/viewer/MainActivity.kt
-          package com.obwhatsapp.viewer
-
-          import io.flutter.embedding.android.FlutterActivity
-
-          class MainActivity: FlutterActivity() {
-          }
-          EOF
-
-          # 7. إعداد build.gradle
+          # 6. تحديث ملف build.gradle ليوافق الإصدارات بدون حظر
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -109,7 +98,7 @@ jobs:
 
           android {
               namespace "com.obwhatsapp.viewer"
-              compileSdk 36
+              compileSdk 34
 
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -123,7 +112,7 @@ jobs:
               defaultConfig {
                   applicationId "com.obwhatsapp.viewer"
                   minSdk 21
-                  targetSdk 36
+                  targetSdk 34
                   versionCode 1
                   versionName "1.0.0"
               }
@@ -133,7 +122,6 @@ jobs:
                       signingConfig signingConfigs.debug
                       minifyEnabled false
                       shrinkResources false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
           }
@@ -143,15 +131,15 @@ jobs:
           }
           EOF
 
-      - name: Clean & Get dependencies
+      - name: Fetch Dependencies
         run: |
           flutter clean
           flutter pub get
 
-      - name: Build APK Release
+      - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      - name: Upload APK
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release
