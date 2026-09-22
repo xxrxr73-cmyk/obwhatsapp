@@ -24,12 +24,23 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Setup Android Project & Permissions
+      - name: Setup Full Android Project Structure
         run: |
-          # 1. إنشاء هيكلية أندرويد
+          # 1. إنشاء المشروع المبدئي للأندرويد
           flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
 
-          # 2. إضافة أذونات التخزين إلى AndroidManifest.xml
+          # 2. إنشاء قواعد ProGuard لتثبيت مكتبات الفلاتر ومنع حذفها في الـ Release
+          mkdir -p android/app
+          cat << 'EOF' > android/app/proguard-rules.pro
+          -keep class io.flutter.app.** { *; }
+          -keep class io.flutter.plugin.** { *; }
+          -keep class io.flutter.util.** { *; }
+          -keep class io.flutter.plugins.** { *; }
+          -keep class com.mr.flutter.plugin.filepicker.** { *; }
+          -dontwarn com.mr.flutter.plugin.filepicker.** { *; }
+          EOF
+
+          # 3. إعداد AndroidManifest مع الأذونات الأساسية للوصول
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
@@ -68,7 +79,18 @@ jobs:
           </manifest>
           EOF
 
-          # 3. استبدال build.gradle بدعم compileSdk 36 و Java 17
+          # 4. كتابة MainActivity.kt يدوياً لتأكيد الربط المحلي
+          mkdir -p android/app/src/main/kotlin/com/obwhatsapp/viewer
+          cat << 'EOF' > android/app/src/main/kotlin/com/obwhatsapp/viewer/MainActivity.kt
+          package com.obwhatsapp.viewer
+
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity: FlutterActivity() {
+          }
+          EOF
+
+          # 5. ضياغة build.gradle المستقر
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -102,6 +124,7 @@ jobs:
                       signingConfig signingConfigs.debug
                       minifyEnabled false
                       shrinkResources false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
           }
@@ -111,8 +134,10 @@ jobs:
           }
           EOF
 
-      - name: Get dependencies
-        run: flutter pub get
+      - name: Clean & Get dependencies
+        run: |
+          flutter clean
+          flutter pub get
 
       - name: Build APK Release
         run: flutter build apk --release --no-tree-shake-icons
