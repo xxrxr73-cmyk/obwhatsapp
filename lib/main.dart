@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() {
   runApp(const OBWhatsAppApp());
@@ -13,7 +14,7 @@ class OBWhatsAppApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'OBWhatsApp Database Viewer',
       theme: ThemeData(
-        primarySwatch: Colors.teal,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
       home: const HomeScreen(),
@@ -30,6 +31,22 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _status = 'لم يتم اختيار قاعدة بيانات بعد';
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _status = 'تم اختيار الملف بنجاح:\n${result.files.single.name}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _status = 'حدث خطأ أثناء فتح مدير الملفات: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,11 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
               ),
-              onPressed: () {
-                setState(() {
-                  _status = 'تم تجهيز الواجهة بنجاح لقراءة قواعد البيانات المحلية';
-                });
-              },
+              onPressed: _pickFile,
               icon: const Icon(Icons.folder_open),
               label: const Text('اختيار ملف قاعدة البيانات'),
             ),
