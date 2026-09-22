@@ -42,7 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (result != null && result.files.single.path != null) {
         setState(() {
-          _status = 'تم اختيار الملف بنجاح:\n${result.files.single.name}';
+          _status = 'تم اختيار الملف بنجاح:\n${result.files.single.name}\n\nالمسار:\n${result.files.single.path}';
+        });
+      } else {
+        setState(() {
+          _status = 'تم إلغاء عملية اختيار الملف';
         });
       }
     } catch (e) {
@@ -59,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('OBWhatsApp Database Viewer'),
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -83,10 +88,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: _pickFile,
               icon: const Icon(Icons.folder_open),
-              label: const Text('اختيار ملف قاعدة البيانات'),
+              label: const Text('اختيار ملف قاعدة البيانات', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
