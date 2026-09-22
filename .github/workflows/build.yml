@@ -33,49 +33,17 @@ jobs:
           cp /tmp/project_backup/main.dart lib/main.dart || true
           cp /tmp/project_backup/pubspec.yaml pubspec.yaml || true
 
-      - name: Configure Android build settings with Java 17 compatibility
+      - name: Force compileSdk 36 and Java 17 compatibility
         run: |
-          cat << 'EOF' > android/app/build.gradle
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-
-          android {
-              namespace "com.obwhatsapp.viewer"
-              compileSdk 36
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-
-              defaultConfig {
-                  applicationId "com.obwhatsapp.viewer"
-                  minSdk 21
-                  targetSdk 36
-                  versionCode 1
-                  versionName "1.0.0"
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-          }
-
-          flutter {
-              source '../..'
-          }
-          EOF
+          # تعديل compileSdk و targetSdk ليكون 36 في build.gradle
+          sed -i 's/compileSdk .*/compileSdk 36/' android/app/build.gradle || true
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
+          sed -i 's/targetSdk .*/targetSdk 36/' android/app/build.gradle || true
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
+          
+          # ضبط توافقية Java 17 لملفات Java و Kotlin
+          sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' android/app/build.gradle || true
+          sed -i 's/JavaVersion.VERSION_11/JavaVersion.VERSION_17/g' android/app/build.gradle || true
 
       - name: Get dependencies
         run: flutter pub get
