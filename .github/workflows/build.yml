@@ -33,7 +33,7 @@ jobs:
           cp /tmp/project_backup/main.dart lib/main.dart || true
           cp /tmp/project_backup/pubspec.yaml pubspec.yaml || true
 
-      - name: Configure Android build settings
+      - name: Configure Android build settings with Java 17 compatibility
         run: |
           cat << 'EOF' > android/app/build.gradle
           plugins {
@@ -45,6 +45,15 @@ jobs:
           android {
               namespace "com.obwhatsapp.viewer"
               compileSdk 36
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
 
               defaultConfig {
                   applicationId "com.obwhatsapp.viewer"
