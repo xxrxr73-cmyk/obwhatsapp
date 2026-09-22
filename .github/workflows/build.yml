@@ -26,10 +26,12 @@ jobs:
 
       - name: Generate Android Skeleton safely
         run: |
-          mkdir -p /tmp/main_backup
-          cp lib/main.dart /tmp/main_backup/main.dart || true
+          mkdir -p /tmp/project_backup
+          cp lib/main.dart /tmp/project_backup/main.dart || true
+          cp pubspec.yaml /tmp/project_backup/pubspec.yaml || true
           flutter create . --platforms=android --org=com.obwhatsapp.viewer --overwrite
-          cp /tmp/main_backup/main.dart lib/main.dart || true
+          cp /tmp/project_backup/main.dart lib/main.dart || true
+          cp /tmp/project_backup/pubspec.yaml pubspec.yaml || true
 
       - name: Upgrade compileSdk to 36
         run: |
