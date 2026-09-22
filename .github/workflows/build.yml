@@ -88,7 +88,7 @@ jobs:
           </manifest>
           EOF
 
-          # 6. إعداد build.gradle
+          # 6. إعداد build.gradle وتعيين minSdk إلى 23
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -111,7 +111,7 @@ jobs:
 
               defaultConfig {
                   applicationId "com.obwhatsapp.viewer"
-                  minSdk 21
+                  minSdk 23
                   targetSdk 36
                   versionCode 1
                   versionName "1.0.0"
@@ -131,7 +131,7 @@ jobs:
           }
           EOF
 
-          # 7. توحيد compileSdk لجميع الموديولات
+          # 7. توحيد compileSdk و minSdk لجميع الموديولات والمكتبات
           cat << 'EOF' >> android/build.gradle
 
           subprojects {
@@ -139,6 +139,9 @@ jobs:
                   if (project.hasProperty('android')) {
                       project.android {
                           compileSdkVersion 36
+                          defaultConfig {
+                              minSdkVersion 23
+                          }
                       }
                   }
               }
@@ -153,10 +156,10 @@ jobs:
       - name: Build Release APK direct
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease -PsuppressMinSdkVersionError=23
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: android/app/build/outputs/apk/release/
